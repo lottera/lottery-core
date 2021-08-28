@@ -245,9 +245,7 @@ contract Lottery is Ownable {
         // Transfer stable to contract
         stable_.safeTransferFrom(msg.sender, address(this), _amount);
         // find actual staked shared for banker
-        uint256 actualStakedShare =_amount
-            .mul(totalStakedStableAmount_)
-            .div(currentStakedStableAmount_);
+        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
         // Add staked amount for banker to state
         stableBanker_[msg.sender] += actualStakedShare;
         totalStakedStableAmount_ += actualStakedShare;
@@ -278,14 +276,18 @@ contract Lottery is Ownable {
         stable_.safeTransfer(msg.sender, _amount);
         // Adjust staked amount for banker to state
         // find actual staked amount to unstake
-        uint256 actualStakedShare = stableBanker_[msg.sender]
-            .mul(totalStakedStableAmount_)
-            .div(currentStakedStableAmount_);
+        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
+        
         stableBanker_[msg.sender] -= actualStakedShare;
         totalStakedStableAmount_ -= actualStakedShare;
         currentStakedStableAmount_ -= _amount;
         // Emit UnstakeStableCoin event
-        emit UnstakeStableCoin(msg.sender, actualStakedShare, _amount, stableBanker_[msg.sender]);
+        emit UnstakeStableCoin(
+            msg.sender,
+            actualStakedShare,
+            _amount,
+            stableBanker_[msg.sender]
+        );
     }
 
     function buyLotteries(BuyLotteryInfo[] calldata _lotteries)
@@ -322,8 +324,13 @@ contract Lottery is Ownable {
         feeKeeper_ = _newAddress;
     }
 
-    function setMaxMultiplierSlippageTolerancePercentage(uint256 _maxMultiplierSlippageTolerancePercentage) external onlyOwner {
-        require(_maxMultiplierSlippageTolerancePercentage <= 100, "Invalid percentage");
+    function setMaxMultiplierSlippageTolerancePercentage(
+        uint256 _maxMultiplierSlippageTolerancePercentage
+    ) external onlyOwner {
+        require(
+            _maxMultiplierSlippageTolerancePercentage <= 100,
+            "Invalid percentage"
+        );
         maxMultiplierSlippageTolerancePercentage_ = _maxMultiplierSlippageTolerancePercentage;
     }
 
@@ -437,11 +444,13 @@ contract Lottery is Ownable {
             "Lottery amount exceed max allowance"
         );
 
-        uint256 multiplier = LotteryUtils.getRewardMultiplier(currentStakedStableAmount_,
+        uint256 multiplier = LotteryUtils.getRewardMultiplier(
+            currentStakedStableAmount_,
             currentBetAmount,
             allLotteries_[lotteryIdCounter_].totalAmount,
             totalLotteryNumber_,
-            maxRewardMultiplier_);
+            maxRewardMultiplier_
+        );
         uint256 rewardAmount = multiplier.mul(amount);
         // Create gambling info
         LotteryUtils.GamblingInfo memory gamblingInfo = LotteryUtils
@@ -499,7 +508,10 @@ contract Lottery is Ownable {
                 _set.isExists[number] = true;
             }
         }
-        require(_set.values.length == totalWinningNumber_, "Total winning numbers is not corrected");
+        require(
+            _set.values.length == totalWinningNumber_,
+            "Total winning numbers is not corrected"
+        );
     }
 
     function _calculateRewards(LotteryUtils.Set storage _set)
@@ -524,12 +536,12 @@ contract Lottery is Ownable {
         }
     }
 
-    function _calculateBankerProfitLoss(uint256 totalReward) internal {
+    function _calculateBankerProfitLoss(uint256 _totalReward) internal {
         uint256 totalBetAmount = allLotteries_[lotteryIdCounter_].totalAmount;
         // if total reward less than total bet amount, then banker not loss any money
         // banker profit = totalBetAmount - totalReward - platform fee (to feeKeeper_)
-        if (totalReward < totalBetAmount) {
-            uint256 remainingAmount = totalBetAmount - totalReward;
+        if (_totalReward < totalBetAmount) {
+            uint256 remainingAmount = totalBetAmount - _totalReward;
             uint256 feeAmount = feePercentage_.mul(remainingAmount).div(100);
             // transfer fee to feeKeeper
             stable_.safeTransfer(feeKeeper_, feeAmount);
@@ -537,10 +549,10 @@ contract Lottery is Ownable {
             uint256 bankerReward = remainingAmount - feeAmount;
             // increase banker current stake stable amount
             currentStakedStableAmount_ += bankerReward;
-        } else if (totalReward > totalBetAmount) {
+        } else if (_totalReward > totalBetAmount) {
             // else if total reward is more than total bet amount,
             // banker will loss staked amount in percentage of (totalReward - totalBetAmount)/total staked amount
-            uint256 stableNeeded = totalReward - totalBetAmount;
+            uint256 stableNeeded = _totalReward - totalBetAmount;
             // remove stable from bankers
             currentStakedStableAmount_ -= stableNeeded;
         }
@@ -554,5 +566,21 @@ contract Lottery is Ownable {
         currentAmount = stableBanker_[msg.sender]
             .mul(currentStakedStableAmount_)
             .div(totalStakedStableAmount_);
+    }
+
+    function _getActualStakedShareForAmount(uint256 _amount)
+        internal
+        view
+        returns (uint256 actualStakedShare)
+    {
+        actualStakedShare = _amount;
+        if (
+            currentStakedStableAmount_ != totalStakedStableAmount_ &&
+            currentStakedStableAmount_ > 0
+        ) {
+            actualStakedShare = _amount.mul(totalStakedStableAmount_).div(
+                currentStakedStableAmount_
+            );
+        }
     }
 }
