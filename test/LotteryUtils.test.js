@@ -177,6 +177,7 @@ contract("LotteryUtils", (accounts) => {
       result = web3.utils.fromWei(result);
 
       assert.equal(result, '2016');
+
     })
   })
 
