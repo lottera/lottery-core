@@ -114,4 +114,70 @@ contract("LotteryUtils", (accounts) => {
 
   })
 
+  describe("LotteryUtils.getMaxAllowBetAmount", async () => {
+    it("when no any bet happened, then should return max allow bet amount correctly", async () => {
+
+      let result = await lotteryUtils.getMaxAllowBetAmount(
+        web3.utils.toWei('1000000'), // _currentStakedStableAmount,
+        web3.utils.toWei('0'), // _currentBetAmount,
+        web3.utils.toWei('0'), // _currentTotalBetAmount,
+        100, // _totalLotteryNumber,
+        80, // _maxRewardMultiplier,
+        20, // _maxMultiplierSlippageTolerancePercentage
+      );
+
+      result = web3.utils.fromWei(result);
+
+      assert.equal(result, '2000');
+    })
+
+    it("when bet amount = average bet amount, then should return max allow bet amount correctly", async () => {
+
+      let result = await lotteryUtils.getMaxAllowBetAmount(
+        web3.utils.toWei('1000000'), // _currentStakedStableAmount,
+        web3.utils.toWei('100'), // _currentBetAmount,
+        web3.utils.toWei('10000'), // _currentTotalBetAmount,
+        100, // _totalLotteryNumber,
+        80, // _maxRewardMultiplier,
+        20, // _maxMultiplierSlippageTolerancePercentage
+      );
+
+      result = web3.utils.fromWei(result);
+
+      assert.equal(result, '2000');
+    })
+
+    it("when bet amount > average bet amount, then should return max allow bet amount correctly", async () => {
+
+      let result = await lotteryUtils.getMaxAllowBetAmount(
+        web3.utils.toWei('1000000'), // _currentStakedStableAmount,
+        web3.utils.toWei('5000'), // _currentBetAmount,
+        web3.utils.toWei('15000'), // _currentTotalBetAmount,
+        100, // _totalLotteryNumber,
+        80, // _maxRewardMultiplier,
+        20, // _maxMultiplierSlippageTolerancePercentage
+      );
+
+      result = web3.utils.fromWei(result);
+
+      assert.equal(result, '1030');
+    })
+
+    it("when bet amount < average bet amount, then should return max allow bet amount correctly", async () => {
+
+      let result = await lotteryUtils.getMaxAllowBetAmount(
+        web3.utils.toWei('1000000'), // _currentStakedStableAmount,
+        web3.utils.toWei('20'), // _currentBetAmount,
+        web3.utils.toWei('10000'), // _currentTotalBetAmount,
+        100, // _totalLotteryNumber,
+        80, // _maxRewardMultiplier,
+        20, // _maxMultiplierSlippageTolerancePercentage
+      );
+
+      result = web3.utils.fromWei(result);
+
+      assert.equal(result, '2016');
+    })
+  })
+
 })
