@@ -61,7 +61,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -82,7 +82,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -110,7 +110,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -143,7 +143,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -163,7 +163,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.unstakeStable(unstakeAmount, { from: accounts[0] })
 
-      actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -181,7 +181,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -192,7 +192,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.unstakeStable(unstakeAmount, { from: accounts[0] });
 
-      actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       balanceOfContract = await tusdt.balanceOf(lottery.address);
@@ -212,7 +212,7 @@ contract("Lottery", (accounts) => {
 
       await lottery.stakeStable(amount, { from: accounts[0] });
 
-      let actual = await lottery.getBankerStableStakedAmount({ from: accounts[0] });
+      let actual = await lottery.getBankerStableStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
@@ -367,7 +367,7 @@ contract("Lottery", (accounts) => {
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
       balanceOfContract = web3.utils.fromWei(balanceOfContract)
 
-      let allGamblingInfo = await lottery.getAllGamblingInfo({ from: accounts[0] });
+      let allGamblingInfo = await lottery.getAllGamblingInfo(accounts[0], { from: accounts[0] });
 
       lotteries.forEach(lottery => {
         let filteredGambling = allGamblingInfo.filter(gambling => gambling.lotteryNumber == lottery.lotteryNumber);
@@ -411,7 +411,7 @@ contract("Lottery", (accounts) => {
       let balanceOfContract = await tusdt.balanceOf(lottery.address)
       balanceOfContract = web3.utils.fromWei(balanceOfContract)
 
-      let allGamblingInfo = await lottery.getAllGamblingInfo({ from: accounts[0] });
+      let allGamblingInfo = await lottery.getAllGamblingInfo(accounts[0], { from: accounts[0] });
 
       lotteries.forEach(lottery => {
         let filteredGambling = allGamblingInfo.filter(gambling => gambling.lotteryNumber == lottery.lotteryNumber);
@@ -752,7 +752,7 @@ contract("Lottery", (accounts) => {
   }
 
   const validateClaimableReward = async (amount, account) => {
-    let reward = await lottery.getClaimableReward({ from: account });
+    let reward = await lottery.getClaimableReward(account, { from: account });
     reward = web3.utils.fromWei(reward);
     assert.equal(reward, amount, `Incorrect reward amount: ${reward}`);
   }
@@ -764,7 +764,7 @@ contract("Lottery", (accounts) => {
   }
 
   const validateStakedAmount = async (amount, account) => {
-    let reward = await lottery.getBankerStableStakedAmount({ from: account });
+    let reward = await lottery.getBankerStableStakedAmount(account, { from: account });
     reward = web3.utils.fromWei(reward);
     assert.equal(reward, amount, `Incorrect reward amount: ${reward}`);
   }

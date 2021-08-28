@@ -148,21 +148,21 @@ contract Lottery is Ownable {
     // VIEW FUNCTIONS
     //-------------------------------------------------------------------------
 
-    function getBankerStableStakedAmount()
+    function getBankerStableStakedAmount(address _banker)
         external
         view
         returns (uint256 amount)
     {
-        amount = _getBankerCurrentStableAmount();
+        amount = _getBankerCurrentStableAmount(_banker);
     }
 
-    function getAllGamblingInfo()
+    function getAllGamblingInfo(address _gambler)
         external
         view
         returns (LotteryUtils.GamblingInfo[] memory allGamblingInfo)
     {
         allGamblingInfo = allLotteries_[lotteryIdCounter_]
-            .lottoGamblerByAddress[msg.sender];
+            .lottoGamblerByAddress[_gambler];
     }
 
     function getWinningNumbers()
@@ -227,12 +227,12 @@ contract Lottery is Ownable {
             .div(currentStakedStableAmount_);
     }
 
-    function getClaimableReward()
+    function getClaimableReward(address _gambler)
         external
         view
         returns (uint256 claimableReward)
     {
-        claimableReward = gamblerReward_[msg.sender];
+        claimableReward = gamblerReward_[_gambler];
     }
 
     //-------------------------------------------------------------------------
@@ -256,7 +256,7 @@ contract Lottery is Ownable {
 
     function unstakeStable(uint256 _amount) external notContract {
         require(
-            _amount <= _getBankerCurrentStableAmount(),
+            _amount <= _getBankerCurrentStableAmount(msg.sender),
             "Unstake amount cannot more than staked amount"
         );
         uint256 lockedStableAmount = allLotteries_[lotteryIdCounter_]
@@ -558,12 +558,12 @@ contract Lottery is Ownable {
         }
     }
 
-    function _getBankerCurrentStableAmount()
+    function _getBankerCurrentStableAmount(address _banker)
         internal
         view
         returns (uint256 currentAmount)
     {
-        currentAmount = stableBanker_[msg.sender]
+        currentAmount = stableBanker_[_banker]
             .mul(currentStakedStableAmount_)
             .div(totalStakedStableAmount_);
     }
