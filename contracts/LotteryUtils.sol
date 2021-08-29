@@ -2,12 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "./UniswapV2Library.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 
 library LotteryUtils {
     // Libraries
     // Safe math
-    using SafeMath for uint256;
+    using SafeMathUpgradeable for uint256;
 
     struct Set {
         uint16[] values;
@@ -71,7 +71,7 @@ library LotteryUtils {
         address _factory,
         address _stable,
         address _lotto
-    ) public view returns (uint256 stableOutput) {
+    ) internal view returns (uint256 stableOutput) {
         (
             uint256 reserveStable,
             uint256 reserveLotto,
@@ -85,7 +85,7 @@ library LotteryUtils {
         address _factory,
         address _stable,
         address _lotto
-    ) public view returns (uint256 lottoOutput) {
+    ) internal view returns (uint256 lottoOutput) {
         (
             uint256 reserveStable,
             uint256 reserveLotto,
@@ -99,7 +99,7 @@ library LotteryUtils {
         address _factory,
         address _stable,
         address _lotto
-    ) public view returns (uint256 requiredStable) {
+    ) internal view returns (uint256 requiredStable) {
         (
             uint256 reserveStable,
             uint256 reserveLotto,
@@ -118,7 +118,7 @@ library LotteryUtils {
         address _factory,
         address _stable,
         address _lotto
-    ) public view returns (uint256 stableOutput) {
+    ) internal view returns (uint256 stableOutput) {
         (
             uint256 reserveStable,
             uint256 reserveLotto,
@@ -136,7 +136,7 @@ library LotteryUtils {
         address _factory,
         address _stable,
         address _lotto
-    ) public view returns (uint256 lottoOutput) {
+    ) internal view returns (uint256 lottoOutput) {
         (
             uint256 reserveStable,
             uint256 reserveLotto,
@@ -154,7 +154,7 @@ library LotteryUtils {
         uint256 _currentBetAmount,
         uint256 _currentTotalBetAmount,
         uint256 _totalLotteryNumber
-    ) public pure returns (uint256 remainingPoolAmount) {
+    ) internal pure returns (uint256 remainingPoolAmount) {
         uint256 currentPoolAmount = _currentStakedStableAmount.div(
             _totalLotteryNumber
         );
@@ -184,7 +184,7 @@ library LotteryUtils {
         uint256 _currentTotalBetAmount,
         uint256 _totalLotteryNumber,
         uint256 _maxRewardMultiplier
-    ) public pure returns (uint256 multiplier) {
+    ) internal pure returns (uint256 multiplier) {
         uint256 currentPoolAmount = _currentStakedStableAmount.div(
             _totalLotteryNumber
         );
@@ -207,7 +207,7 @@ library LotteryUtils {
         uint256 _totalLotteryNumber,
         uint256 _maxRewardMultiplier,
         uint256 _maxMultiplierSlippageTolerancePercentage
-    ) public pure returns (uint256 maxAllowBetAmount) {
+    ) internal pure returns (uint256 maxAllowBetAmount) {
         uint256 remainingPoolAmount = getRemainingPoolAmount(
             _currentStakedStableAmount,
             _currentBetAmount,
