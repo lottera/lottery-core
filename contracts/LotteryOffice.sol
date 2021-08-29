@@ -9,7 +9,7 @@ import "./Lottery.sol";
 import "./interface/ILotteryOffice.sol";
 
 contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
-     // Libraries
+    // Libraries
     // Safe math
     using SafeMathUpgradeable for uint256;
 
@@ -42,10 +42,10 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
 
     uint256 internal constant WEI = 1 * (10**18);
 
-    constructor() { }
+    constructor() {}
 
     function initialize(address _stable) public initializer {
-         __Ownable_init();
+        __Ownable_init();
         stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
         createdSince_ = block.timestamp;
@@ -253,7 +253,9 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
             uint256 profit = currentStakedAmount_.sub(totalStakedShare_);
             uint256 diffTimestamp = block.timestamp - createdSince_;
 
-            estimatedApy = profit.mul(365 days).div(diffTimestamp);
+            estimatedApy = profit.mul(365 days).mul(WEI).div(diffTimestamp).div(
+                    totalStakedShare_
+                );
         } else {
             estimatedApy = 0;
         }
