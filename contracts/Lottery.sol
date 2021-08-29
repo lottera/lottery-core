@@ -65,7 +65,7 @@ contract Lottery is OwnableUpgradeable {
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
     //-------------------------------------------------------------------------
-    constructor() { }
+    constructor() {}
 
     function initialize(
         address _lotto,
@@ -78,7 +78,7 @@ contract Lottery is OwnableUpgradeable {
         uint256 _maxMultiplierSlippageTolerancePercentage,
         uint8 _totalWinningNumber,
         uint256 _feePercentage
-    )  public initializer {
+    ) public initializer {
         __Ownable_init();
         lotto_ = IERC20Upgradeable(_lotto);
         lottoAddress_ = _lotto;
@@ -397,13 +397,14 @@ contract Lottery is OwnableUpgradeable {
         // if total reward amount is more than bet amount
         // we need to lock some staked stable
         if (totalRewardAmountByNumber > totalBetAmount) {
-            uint256 totalReward = totalRewardAmountByNumber -
-                totalBetAmount;
+            uint256 totalReward = totalRewardAmountByNumber - totalBetAmount;
             uint256 lockedStableAmount = allLotteries_[lotteryIdCounter_]
                 .lockedStableAmount;
             if (totalReward > lockedStableAmount) {
                 //Lock more staked amount at Lottery Office
-                lotteryOffice_.lockBankerAmount(totalReward.sub(lockedStableAmount));
+                lotteryOffice_.lockBankerAmount(
+                    totalReward.sub(lockedStableAmount)
+                );
                 //And then update curent locked amount
                 allLotteries_[lotteryIdCounter_]
                     .lockedStableAmount = totalReward;
@@ -460,11 +461,14 @@ contract Lottery is OwnableUpgradeable {
             uint256 remainingAmount = totalBetAmount - _totalReward;
             uint256 feeAmount = feePercentage_.mul(remainingAmount).div(100);
             // transfer fee to feeKeeper
-            stable_.safeTransfer(feeKeeper_, feeAmount);
+            _swapStableToLottoAndTransfer(feeAmount, feeKeeper_);
             // add reward to banker
             uint256 bankerReward = remainingAmount - feeAmount;
             // increase banker current stake stable amount
-            stable_.safeIncreaseAllowance(address(lotteryOffice_), bankerReward);
+            stable_.safeIncreaseAllowance(
+                address(lotteryOffice_),
+                bankerReward
+            );
             lotteryOffice_.depositBankerAmount(bankerReward);
         } else if (_totalReward > totalBetAmount) {
             // else if total reward is more than total bet amount,
@@ -475,13 +479,45 @@ contract Lottery is OwnableUpgradeable {
         }
     }
 
+    function _swapStableToLottoAndTransfer(
+        uint256 _stableAmount,
+        address destination
+    ) internal {
+        uint256 possibleLottoOutput = LotteryUtils
+            .getPossibleLottoOutputForInputStable(
+                _stableAmount,
+                factory_,
+                stableAddress_,
+                lottoAddress_
+            );
+        // swap stable for lotto
+        address[] memory path = new address[](2);
+        path[0] = stableAddress_;
+        path[1] = lottoAddress_;
+        stable_.safeIncreaseAllowance(address(uniswapRouter_), _stableAmount);
+        uniswapRouter_.swapExactTokensForTokens(
+            _stableAmount,
+            possibleLottoOutput,
+            path,
+            destination,
+            block.timestamp
+        );
+    }
+
     function _unlockCurrentRoundStakedAmount() internal {
-        lotteryOffice_.unlockBankerAmount(allLotteries_[lotteryIdCounter_].lockedStableAmount);
+        lotteryOffice_.unlockBankerAmount(
+            allLotteries_[lotteryIdCounter_].lockedStableAmount
+        );
         allLotteries_[lotteryIdCounter_].lockedStableAmount = 0;
     }
 
-    function _getAvailableStakedAmount() internal view returns (uint256 availableStakedAmount){
-        availableStakedAmount = lotteryOffice_.getAvailableBankerAmount().add(allLotteries_[lotteryIdCounter_].lockedStableAmount);
+    function _getAvailableStakedAmount()
+        internal
+        view
+        returns (uint256 availableStakedAmount)
+    {
+        availableStakedAmount = lotteryOffice_.getAvailableBankerAmount().add(
+            allLotteries_[lotteryIdCounter_].lockedStableAmount
+        );
     }
-
 }

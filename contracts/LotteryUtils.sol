@@ -131,6 +131,24 @@ library LotteryUtils {
         );
     }
 
+    function getPossibleLottoOutputForInputStable(
+        uint256 _stableAmount,
+        address _factory,
+        address _stable,
+        address _lotto
+    ) public view returns (uint256 lottoOutput) {
+        (
+            uint256 reserveStable,
+            uint256 reserveLotto,
+
+        ) = getLottoStablePairInfo(_factory, _stable, _lotto);
+        lottoOutput = UniswapV2Library.getAmountOut(
+            _stableAmount,
+            reserveStable,
+            reserveLotto
+        );
+    }
+
     function getRemainingPoolAmount(
         uint256 _currentStakedStableAmount,
         uint256 _currentBetAmount,

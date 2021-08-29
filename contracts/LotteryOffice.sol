@@ -98,8 +98,8 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
             _totalWinningNumber,
             _feePercentage
         );
+        Lottery(lottery).setFeeKeeperAddress(msg.sender);
         Lottery(lottery).transferOwnership(msg.sender);
-
         // Update state
         lotteryNames.values.push(_lotteryName);
         lotteryNames.isExists[_lotteryName] = true;

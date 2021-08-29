@@ -647,6 +647,7 @@ contract("Lottery", (accounts) => {
     it("reward should be calculated correctly for each gambler - banker win", async () => {
       const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
       const account2TUSDT = await getCurrentTUSDTBalance(accounts[2]);
+      const account0Lotto = await getCurrentLottoBalance(accounts[0]);
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
@@ -700,6 +701,9 @@ contract("Lottery", (accounts) => {
       // This include reward from last e2e test cases
       await validateTUSDTBalance(account1TUSDT - 10 + 800, accounts[1]);
       await validateTUSDTBalance(account2TUSDT - 10 + 790, accounts[2]);
+
+      // 12. Validate fee amount received
+      await validateLottoBalance(Number(account0Lotto) + 358.791222654364895351, accounts[0]);
     })
 
     it("reward should be calculated correctly for each gambler - big gambler win", async () => {
@@ -809,8 +813,20 @@ contract("Lottery", (accounts) => {
     assert.equal(balance, amount, `Incorrect balance amount: ${balance}`);
   }
 
+  const validateLottoBalance = async (amount, account) => {
+    let balance = await lotto.balanceOf(account);
+    balance = web3.utils.fromWei(balance);
+    assert.equal(balance, amount, `Incorrect balance amount: ${balance}`);
+  }
+
   const getCurrentTUSDTBalance = async (account) => {
     let balance = await tusdt.balanceOf(account);
+    balance = web3.utils.fromWei(balance);
+    return balance;
+  }
+
+  const getCurrentLottoBalance = async (account) => {
+    let balance = await lotto.balanceOf(account);
     balance = web3.utils.fromWei(balance);
     return balance;
   }
