@@ -52,12 +52,6 @@ contract Lottery is Ownable {
     uint16 internal totalLotteryNumber_;
     // Number of winning number
     uint8 internal totalWinningNumber_;
-    // Mapping of banker's staked amount
-    mapping(address => uint256) internal stableBanker_;
-    // Total Staked Amount
-    uint256 internal totalStakedStableAmount_;
-    // Current Staked Amount
-    uint256 internal currentStakedStableAmount_;
     // Mapping of gambler's reward in lotto token
     mapping(address => uint256) internal gamblerReward_;
     // Wei with 18 Decimals
@@ -115,19 +109,6 @@ contract Lottery is Ownable {
     // EVENTS
     //-------------------------------------------------------------------------
 
-    event StakeStableCoin(
-        address indexed banker,
-        uint256 amount,
-        uint256 total
-    );
-
-    event UnstakeStableCoin(
-        address indexed banker,
-        uint256 actualStakedAmount,
-        uint256 amountWithReward,
-        uint256 remaining
-    );
-
     event BuyLottery(
         address indexed gambler,
         uint16 lotteryNumber,
@@ -152,14 +133,6 @@ contract Lottery is Ownable {
     //-------------------------------------------------------------------------
     // VIEW FUNCTIONS
     //-------------------------------------------------------------------------
-
-    function getBankerStableStakedAmount(address _banker)
-        external
-        view
-        returns (uint256 amount)
-    {
-        amount = _getBankerCurrentStableAmount(_banker);
-    }
 
     function getAllGamblingInfo(address _gambler)
         external
@@ -186,7 +159,7 @@ contract Lottery is Ownable {
         uint256 currentBetAmount = allLotteries_[lotteryIdCounter_]
             .totalAmountByNumber[_number];
         multiplier = LotteryUtils.getRewardMultiplier(
-            currentStakedStableAmount_,
+            _getAvailableStakedAmount(),
             currentBetAmount,
             allLotteries_[lotteryIdCounter_].totalAmount,
             totalLotteryNumber_,
@@ -202,34 +175,13 @@ contract Lottery is Ownable {
         uint256 currentBetAmount = allLotteries_[lotteryIdCounter_]
             .totalAmountByNumber[_number];
         maxAllowBetAmount = LotteryUtils.getMaxAllowBetAmount(
-            currentStakedStableAmount_,
+            _getAvailableStakedAmount(),
             currentBetAmount,
             allLotteries_[lotteryIdCounter_].totalAmount,
             totalLotteryNumber_,
             maxRewardMultiplier_,
             maxMultiplierSlippageTolerancePercentage_
         );
-    }
-
-    function getLockedStableAmount()
-        external
-        view
-        returns (uint256 lockedStableAmount)
-    {
-        lockedStableAmount = allLotteries_[lotteryIdCounter_]
-            .lockedStableAmount;
-    }
-
-    function getLockedStablePercentage()
-        external
-        view
-        returns (uint256 lockedStablePercentage)
-    {
-        lockedStablePercentage = allLotteries_[lotteryIdCounter_]
-            .lockedStableAmount
-            .mul(100)
-            .mul(WEI)
-            .div(currentStakedStableAmount_);
     }
 
     function getClaimableReward(address _gambler)
@@ -243,57 +195,6 @@ contract Lottery is Ownable {
     //-------------------------------------------------------------------------
     // General Access Functions
     //-------------------------------------------------------------------------
-
-    function stakeStable(uint256 _amount) external notContract {
-        require(_amount > 0, "Stake amount should be more than 0");
-
-        // Transfer stable to contract
-        stable_.safeTransferFrom(msg.sender, address(this), _amount);
-        // find actual staked shared for banker
-        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
-        // Add staked amount for banker to state
-        stableBanker_[msg.sender] += actualStakedShare;
-        totalStakedStableAmount_ += actualStakedShare;
-        currentStakedStableAmount_ += _amount;
-        // Emit StakeStableCoin event
-        emit StakeStableCoin(msg.sender, _amount, stableBanker_[msg.sender]);
-    }
-
-    function unstakeStable(uint256 _amount) external notContract {
-        require(
-            _amount <= _getBankerCurrentStableAmount(msg.sender),
-            "Unstake amount cannot more than staked amount"
-        );
-        uint256 lockedStableAmount = allLotteries_[lotteryIdCounter_]
-            .lockedStableAmount;
-        uint256 unlockedStableAmount = currentStakedStableAmount_ -
-            lockedStableAmount;
-        uint256 availableToUnstake = unlockedStableAmount
-            .mul(stableBanker_[msg.sender])
-            .div(currentStakedStableAmount_);
-
-        require(
-            _amount <= availableToUnstake,
-            "Cannot unstake more than unlocked amount"
-        );
-
-        // Transfer stable to banker
-        stable_.safeTransfer(msg.sender, _amount);
-        // Adjust staked amount for banker to state
-        // find actual staked amount to unstake
-        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
-
-        stableBanker_[msg.sender] -= actualStakedShare;
-        totalStakedStableAmount_ -= actualStakedShare;
-        currentStakedStableAmount_ -= _amount;
-        // Emit UnstakeStableCoin event
-        emit UnstakeStableCoin(
-            msg.sender,
-            actualStakedShare,
-            _amount,
-            stableBanker_[msg.sender]
-        );
-    }
 
     function buyLotteries(BuyLotteryInfo[] calldata _lotteries)
         external
@@ -439,7 +340,7 @@ contract Lottery is Ownable {
         uint256 currentBetAmount = allLotteries_[lotteryIdCounter_]
             .totalAmountByNumber[lotteryNumber];
         uint256 maxAllowBetAmount = LotteryUtils.getMaxAllowBetAmount(
-            currentStakedStableAmount_,
+            _getAvailableStakedAmount(),
             currentBetAmount,
             allLotteries_[lotteryIdCounter_].totalAmount,
             totalLotteryNumber_,
@@ -453,7 +354,7 @@ contract Lottery is Ownable {
         );
 
         uint256 multiplier = LotteryUtils.getRewardMultiplier(
-            currentStakedStableAmount_,
+            _getAvailableStakedAmount(),
             currentBetAmount,
             allLotteries_[lotteryIdCounter_].totalAmount,
             totalLotteryNumber_,
@@ -479,12 +380,12 @@ contract Lottery is Ownable {
         allLotteries_[lotteryIdCounter_].totalAmount += amount;
 
         // calculate locked stable and save into state
-        _calculateLockedStableAmount(lotteryNumber);
+        _calculateAndLockedStableAmount(lotteryNumber);
 
         emit BuyLottery(msg.sender, lotteryNumber, amount, lotteryIdCounter_);
     }
 
-    function _calculateLockedStableAmount(uint16 lotteryNumber) internal {
+    function _calculateAndLockedStableAmount(uint16 lotteryNumber) internal {
         uint256 totalRewardAmountByNumber = allLotteries_[lotteryIdCounter_]
             .totalRewardAmountByNumber[lotteryNumber];
         uint256 totalBetAmount = allLotteries_[lotteryIdCounter_].totalAmount;
@@ -492,13 +393,16 @@ contract Lottery is Ownable {
         // if total reward amount is more than bet amount
         // we need to lock some staked stable
         if (totalRewardAmountByNumber > totalBetAmount) {
-            uint256 totalRewardInStable = totalRewardAmountByNumber -
+            uint256 totalReward = totalRewardAmountByNumber -
                 totalBetAmount;
             uint256 lockedStableAmount = allLotteries_[lotteryIdCounter_]
                 .lockedStableAmount;
-            if (totalRewardInStable > lockedStableAmount) {
+            if (totalReward > lockedStableAmount) {
+                //Lock more staked amount at Lottery Office
+                lotteryOffice_.lockBankerAmount(totalReward.sub(lockedStableAmount));
+                //And then update curent locked amount
                 allLotteries_[lotteryIdCounter_]
-                    .lockedStableAmount = totalRewardInStable;
+                    .lockedStableAmount = totalReward;
             }
         }
     }
@@ -556,43 +460,24 @@ contract Lottery is Ownable {
             // add reward to banker
             uint256 bankerReward = remainingAmount - feeAmount;
             // increase banker current stake stable amount
-            currentStakedStableAmount_ += bankerReward;
+            stable_.safeIncreaseAllowance(address(lotteryOffice_), bankerReward);
+            lotteryOffice_.depositBankerAmount(bankerReward);
         } else if (_totalReward > totalBetAmount) {
             // else if total reward is more than total bet amount,
             // banker will loss staked amount in percentage of (totalReward - totalBetAmount)/total staked amount
             uint256 stableNeeded = _totalReward - totalBetAmount;
             // remove stable from bankers
-            currentStakedStableAmount_ -= stableNeeded;
+            lotteryOffice_.withdrawBankerAmount(stableNeeded);
         }
     }
 
     function _unlockCurrentRoundStakedAmount() internal {
+        lotteryOffice_.unlockBankerAmount(allLotteries_[lotteryIdCounter_].lockedStableAmount);
         allLotteries_[lotteryIdCounter_].lockedStableAmount = 0;
     }
 
-    function _getBankerCurrentStableAmount(address _banker)
-        internal
-        view
-        returns (uint256 currentAmount)
-    {
-        currentAmount = stableBanker_[_banker]
-            .mul(currentStakedStableAmount_)
-            .div(totalStakedStableAmount_);
+    function _getAvailableStakedAmount() internal view returns (uint256 availableStakedAmount){
+        availableStakedAmount = lotteryOffice_.getAvailableBankerAmount().add(allLotteries_[lotteryIdCounter_].lockedStableAmount);
     }
 
-    function _getActualStakedShareForAmount(uint256 _amount)
-        internal
-        view
-        returns (uint256 actualStakedShare)
-    {
-        actualStakedShare = _amount;
-        if (
-            currentStakedStableAmount_ != totalStakedStableAmount_ &&
-            currentStakedStableAmount_ > 0
-        ) {
-            actualStakedShare = _amount.mul(totalStakedStableAmount_).div(
-                currentStakedStableAmount_
-            );
-        }
-    }
 }

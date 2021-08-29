@@ -1,10 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./Lottery.sol";
 import "./interface/ILotteryOffice.sol";
 
 contract LotteryOffice is Ownable, ILotteryOffice {
+    // Libraries
+    // Safe math
+    using SafeMath for uint256;
+
+    // Safe ERC20
+    using SafeERC20 for IERC20;
+
+    IERC20 internal stable_;
+    address internal stableAddress_;
+
     struct Set {
         string[] values;
         mapping(string => bool) isExists;
@@ -15,7 +28,24 @@ contract LotteryOffice is Ownable, ILotteryOffice {
 
     Set internal lotteryNames;
 
-    constructor() {}
+    // Mapping of banker's staked amount
+    mapping(address => uint256) public getBankerShare;
+    // Total Staked Share
+    uint256 public totalStakedShare_;
+    // Current Staked Amount
+    uint256 public currentStakedAmount_;
+    // Current locked Amount
+    uint256 public currentLockedAmount_;
+    // Created since
+    uint256 internal createdSince_;
+
+    uint256 internal constant WEI = 1 * (10**18);
+
+    constructor(address _stable) {
+        stable_ = IERC20(_stable);
+        stableAddress_ = _stable;
+        createdSince_ = block.timestamp;
+    }
 
     //-------------------------------------------------------------------------
     // General Access Functions
@@ -38,10 +68,7 @@ contract LotteryOffice is Ownable, ILotteryOffice {
             "Lottery name is exists"
         );
 
-        require(
-            bytes(_lotteryName).length > 0,
-            "Invalid lottery name"
-        );
+        require(bytes(_lotteryName).length > 0, "Invalid lottery name");
 
         bytes memory bytecode = abi.encodePacked(
             type(Lottery).creationCode,
@@ -78,7 +105,7 @@ contract LotteryOffice is Ownable, ILotteryOffice {
         getLotteryAddress[_lotteryName] = lottery;
         getLotteryName[lottery] = _lotteryName;
         isValidLottery[lottery] = true;
-        
+
         // Emit event
         emit LotteryCreated(
             _lotteryName,
@@ -88,49 +115,199 @@ contract LotteryOffice is Ownable, ILotteryOffice {
         );
     }
 
-    function lockBankerAmount(uint256 _amount) external override onlyLottery{
-
+    function lockBankerAmount(uint256 _amount) external override onlyLottery {
+        require(
+            currentLockedAmount_.add(_amount) <= currentStakedAmount_,
+            "Cannot lock more that current staked amount"
+        );
+        currentLockedAmount_ = currentLockedAmount_.add(_amount);
     }
-    function unlockBankerAmount(uint256 _amount) external override onlyLottery{
 
+    function unlockBankerAmount(uint256 _amount) external override onlyLottery {
+        require(
+            _amount <= currentLockedAmount_,
+            "Unlock amount must not greater that current locked amount"
+        );
+        currentLockedAmount_ = currentLockedAmount_.sub(_amount);
     }
-    function withdrawBankerAmount(uint256 _amount) external override onlyLottery {
 
+    function withdrawBankerAmount(uint256 _amount)
+        external
+        override
+        onlyLottery
+    {
+        require(
+            _amount <= currentLockedAmount_,
+            "Cannot withdraw more than current locked amount"
+        );
+        currentStakedAmount_ = currentStakedAmount_.sub(_amount);
+        stable_.safeTransfer(msg.sender, _amount);
+        emit WithdrawStableCoin(
+            msg.sender,
+            getLotteryName[msg.sender],
+            _amount,
+            currentStakedAmount_
+        );
     }
-    function depositBankerAmount(uint256 _amount) external override onlyLottery {
 
+    function depositBankerAmount(uint256 _amount)
+        external
+        override
+        onlyLottery
+    {
+        stable_.safeTransferFrom(msg.sender, address(this), _amount);
+        currentStakedAmount_ = currentStakedAmount_.add(_amount);
+        emit DepositStableCoin(
+            msg.sender,
+            getLotteryName[msg.sender],
+            _amount,
+            currentStakedAmount_
+        );
     }
+
     function stake(uint256 _amount) external override {
-
+        require(_amount > 0, "Stake amount should be more than 0");
+        // Transfer stable to contract
+        stable_.safeTransferFrom(msg.sender, address(this), _amount);
+        // find actual staked shared for banker
+        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
+        // Add staked amount for banker to state
+        getBankerShare[msg.sender] = getBankerShare[msg.sender].add(
+            actualStakedShare
+        );
+        totalStakedShare_ = totalStakedShare_.add(actualStakedShare);
+        currentStakedAmount_ = currentStakedAmount_.add(_amount);
+        // Emit StakeStableCoin event
+        emit StakeStableCoin(msg.sender, _amount, getBankerShare[msg.sender]);
     }
-    function unstake(uint256 _amount) external override {
 
+    function unstake(uint256 _amount) external override {
+        require(
+            _amount <= _getBankerCurrentStableAmount(msg.sender),
+            "Unstake amount cannot more than staked amount"
+        );
+        uint256 unlockedStableAmount = currentStakedAmount_ -
+            currentLockedAmount_;
+        uint256 availableToUnstake = unlockedStableAmount
+            .mul(getBankerShare[msg.sender])
+            .div(currentStakedAmount_);
+
+        require(
+            _amount <= availableToUnstake,
+            "Cannot unstake more than unlocked amount"
+        );
+
+        // Transfer stable to banker
+        stable_.safeTransfer(msg.sender, _amount);
+        // Adjust staked amount for banker to state
+        // find actual staked amount to unstake
+        uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
+
+        getBankerShare[msg.sender] = getBankerShare[msg.sender].sub(
+            actualStakedShare
+        );
+        totalStakedShare_ = totalStakedShare_.sub(actualStakedShare);
+        currentStakedAmount_ = currentStakedAmount_.sub(_amount);
+        // Emit UnstakeStableCoin event
+        emit UnstakeStableCoin(
+            msg.sender,
+            actualStakedShare,
+            _amount,
+            getBankerShare[msg.sender]
+        );
     }
 
     //-------------------------------------------------------------------------
     // View
     //-------------------------------------------------------------------------
-    function getAvailableBankerAmount() external view override returns (uint256 availableAmount)
+    function getAvailableBankerAmount()
+        external
+        view
+        override
+        returns (uint256 availableAmount)
     {
-        availableAmount = 0;
-    }
-    function getStakedAmount(address _banker) external view override returns (uint256 stakedAmount){
-        stakedAmount = 0;
-    }
-    function getTvl() external view override returns (uint256 tvl){
-        tvl = 0;
-    }
-    function getEstimatedApy() external view override returns (uint256 estimatedApy){
-        estimatedApy = 0;
+        availableAmount = currentStakedAmount_ - currentLockedAmount_;
     }
 
+    function getStakedAmount(address _banker)
+        external
+        view
+        override
+        returns (uint256 stakedAmount)
+    {
+        stakedAmount = _getBankerCurrentStableAmount(_banker);
+    }
+
+    function getTvl() external view override returns (uint256 tvl) {
+        tvl = currentStakedAmount_;
+    }
+
+    function getEstimatedApy()
+        external
+        view
+        override
+        returns (uint256 estimatedApy)
+    {
+        if (currentStakedAmount_ > totalStakedShare_) {
+            uint256 profit = currentStakedAmount_.sub(totalStakedShare_);
+            uint256 diffTimestamp = block.timestamp - createdSince_;
+
+            estimatedApy = profit.mul(365 days).div(diffTimestamp);
+        } else {
+            estimatedApy = 0;
+        }
+    }
+
+    function getLockedAmountPercentage()
+        external
+        view
+        override
+        returns (uint256 lockedAmountPercentage)
+    {
+        lockedAmountPercentage = currentLockedAmount_.mul(100).mul(WEI).div(
+            currentStakedAmount_
+        );
+    }
+
+    //-------------------------------------------------------------------------
+    // Internal
+    //-------------------------------------------------------------------------
+
+    function _getBankerCurrentStableAmount(address _banker)
+        internal
+        view
+        returns (uint256 currentAmount)
+    {
+        currentAmount = getBankerShare[_banker].mul(currentStakedAmount_).div(
+            totalStakedShare_
+        );
+    }
+
+    function _getActualStakedShareForAmount(uint256 _amount)
+        internal
+        view
+        returns (uint256 actualStakedShare)
+    {
+        actualStakedShare = _amount;
+        if (
+            currentStakedAmount_ != totalStakedShare_ &&
+            currentStakedAmount_ > 0
+        ) {
+            actualStakedShare = _amount.mul(totalStakedShare_).div(
+                currentStakedAmount_
+            );
+        }
+    }
 
     //-------------------------------------------------------------------------
     // Modifier
     //-------------------------------------------------------------------------
 
     modifier onlyLottery() {
-        require(isValidLottery[msg.sender] == true, "OnlyLottery : caller is not valid lottery");
+        require(
+            isValidLottery[msg.sender] == true,
+            "OnlyLottery : caller is not valid lottery"
+        );
         _;
     }
 }

@@ -9,6 +9,33 @@ interface ILotteryOffice {
         uint8 totalWinningNumber
     );
 
+    event StakeStableCoin(
+        address indexed banker,
+        uint256 amount,
+        uint256 total
+    );
+
+    event UnstakeStableCoin(
+        address indexed banker,
+        uint256 actualStakedAmount,
+        uint256 amountWithReward,
+        uint256 remaining
+    );
+
+    event DepositStableCoin(
+        address indexed lotteryContract,
+        string lotteryName,
+        uint256 amount,
+        uint256 currentStakedAmount
+    );
+
+    event WithdrawStableCoin(
+        address indexed lotteryContract,
+        string lotteryName,
+        uint256 amount,
+        uint256 currentStakedAmount
+    );
+
     function createNewLottery(
         string calldata _lotteryName,
         address _lotto,
@@ -33,5 +60,6 @@ interface ILotteryOffice {
     function getStakedAmount(address _banker) external view returns (uint256 tvl);
     function getTvl() external view returns (uint256 tvl);
     function getEstimatedApy() external view returns (uint256 estimatedApy);
+    function getLockedAmountPercentage() external view returns (uint256 lockedAmountPercentage);
 }
 
