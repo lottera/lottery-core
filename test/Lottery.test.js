@@ -14,8 +14,7 @@ const UniswapV2Router02 = truffleContract(UniswapV2Router02Bytecode);
 
 
 contract("Lottery", (accounts) => {
-
-  beforeEach(async () => {
+  before(async () => {
     lotto = await Lotto.new(100000000);
     tusdt = await TUSDT.new(100000000);
     UniswapV2Factory.setProvider(web3.currentProvider);
@@ -47,6 +46,9 @@ contract("Lottery", (accounts) => {
 
     lotteryUtils = await LotteryUtils.new();
     LotteryFactory.link('LotteryUtils', lotteryUtils.address);
+  })
+
+  beforeEach(async () => {
     lotteryFactory = await LotteryFactory.new();
     await lotteryFactory.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
     newLottery = await lotteryFactory.getLotteryAddress("2DigitsThai");
@@ -569,6 +571,9 @@ contract("Lottery", (accounts) => {
   describe("e2e", async () => {
 
     it("reward should be calculated correctly for each gambler - banker lose", async () => {
+      const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
+      const account2TUSDT = await getCurrentTUSDTBalance(accounts[2]);
+
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lottery.address, amount, { from: accounts[0] });
@@ -606,11 +611,13 @@ contract("Lottery", (accounts) => {
       await validateClaimableReward(0, accounts[2]);
 
       // 9. assert gambler lotto balance
-      await validateTUSDTBalance(100790, accounts[1]);
-      await validateTUSDTBalance(100780, accounts[2]);
+      await validateTUSDTBalance(account1TUSDT - 10 + 800, accounts[1]);
+      await validateTUSDTBalance(account2TUSDT - 10 + 790, accounts[2]);
     })
 
     it("reward should be calculated correctly for each gambler - banker win", async () => {
+      const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
+      const account2TUSDT = await getCurrentTUSDTBalance(accounts[2]);
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lottery.address, amount, { from: accounts[0] });
@@ -656,11 +663,14 @@ contract("Lottery", (accounts) => {
 
       // 9. assert gambler lotto balance
       // This include reward from last e2e test cases
-      await validateTUSDTBalance(100790, accounts[1]);
-      await validateTUSDTBalance(100780, accounts[2]);
+      await validateTUSDTBalance(account1TUSDT - 10 + 800, accounts[1]);
+      await validateTUSDTBalance(account2TUSDT - 10 + 790, accounts[2]);
     })
 
     it("reward should be calculated correctly for each gambler - big gambler win", async () => {
+      const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
+      const account2TUSDT = await getCurrentTUSDTBalance(accounts[2]);
+      const account5TUSDT = await getCurrentTUSDTBalance(accounts[5]);
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lottery.address, amount, { from: accounts[0] });
@@ -699,12 +709,13 @@ contract("Lottery", (accounts) => {
 
       // 9. assert gambler lotto balance
       // This include reward/loss from last e2e test cases
-      await validateTUSDTBalance(99999, accounts[1]);
-      await validateTUSDTBalance(99999, accounts[2]);
-      await validateTUSDTBalance(107900, accounts[5]);
+      await validateTUSDTBalance(account1TUSDT - 1, accounts[1]);
+      await validateTUSDTBalance(account2TUSDT - 1, accounts[2]);
+      await validateTUSDTBalance(account5TUSDT - 100 + 8000, accounts[5]);
     })
 
     it("simulate normal distribution of lottery number", async () => {
+      const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lottery.address, amount, { from: accounts[0] });
@@ -735,7 +746,7 @@ contract("Lottery", (accounts) => {
       await validateClaimableReward(0, accounts[1]);
 
       // 9. assert gambler lotto balance
-      await validateTUSDTBalance(99900, accounts[1]);
+      await validateTUSDTBalance(account1TUSDT - 500 + 400, accounts[1]);
     })
   })
 
@@ -761,6 +772,12 @@ contract("Lottery", (accounts) => {
     let balance = await tusdt.balanceOf(account);
     balance = web3.utils.fromWei(balance);
     assert.equal(balance, amount, `Incorrect balance amount: ${balance}`);
+  }
+
+  const getCurrentTUSDTBalance = async (account) => {
+    let balance = await tusdt.balanceOf(account);
+    balance = web3.utils.fromWei(balance);
+    return balance;
   }
 
   const validateStakedAmount = async (amount, account) => {

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Lottery.sol";
+import "./interface/ILotteryFactory.sol";
 
-contract LotteryFactory is Ownable {
+contract LotteryFactory is Ownable, ILotteryFactory {
     struct Set {
         string[] values;
         mapping(string => bool) isExists;
@@ -15,16 +16,6 @@ contract LotteryFactory is Ownable {
     Set internal lotteryNames;
 
     constructor() {}
-
-    //-------------------------------------------------------------------------
-    // Event
-    //-------------------------------------------------------------------------
-    event LotteryCreated(
-        string lotteryName,
-        uint256 maxRewardMultiplier,
-        uint16 totalLotteryNumber,
-        uint8 totalWinningNumber
-    );
 
     //-------------------------------------------------------------------------
     // General Access Functions
@@ -41,7 +32,7 @@ contract LotteryFactory is Ownable {
         uint256 _maxMultiplierSlippageTolerancePercentage,
         uint8 _totalWinningNumber,
         uint256 _feePercentage
-    ) external onlyOwner returns (address lottery) {
+    ) external override onlyOwner returns (address lottery) {
         require(
             lotteryNames.isExists[_lotteryName] == false,
             "Lottery name is exists"
@@ -59,6 +50,7 @@ contract LotteryFactory is Ownable {
                 _stable,
                 _factory,
                 _router,
+                address(this),
                 _maxRewardMultiplier,
                 _totalLotteryNumber,
                 _maxMultiplierSlippageTolerancePercentage,
@@ -95,6 +87,43 @@ contract LotteryFactory is Ownable {
             _totalWinningNumber
         );
     }
+
+    function lockBankerAmount(uint256 _amount) external override onlyLottery{
+
+    }
+    function unlockBankerAmount(uint256 _amount) external override onlyLottery{
+
+    }
+    function withdrawBankerAmount(uint256 _amount) external override onlyLottery {
+
+    }
+    function depositBankerAmount(uint256 _amount) external override onlyLottery {
+
+    }
+    function stake(uint256 _amount) external override {
+
+    }
+    function unstake(uint256 _amount) external override {
+
+    }
+
+    //-------------------------------------------------------------------------
+    // View
+    //-------------------------------------------------------------------------
+    function getAvailableBankerAmount() external view override returns (uint256 availableAmount)
+    {
+        availableAmount = 0;
+    }
+    function getStakedAmount(address _banker) external view override returns (uint256 stakedAmount){
+        stakedAmount = 0;
+    }
+    function getTvl() external view override returns (uint256 tvl){
+        tvl = 0;
+    }
+    function getEstimatedApy() external view override returns (uint256 estimatedApy){
+        estimatedApy = 0;
+    }
+
 
     //-------------------------------------------------------------------------
     // Modifier

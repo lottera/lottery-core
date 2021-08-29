@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./LotteryUtils.sol";
+import "./interface/ILotteryFactory.sol";
 
 contract Lottery is Ownable {
     // Libraries
@@ -30,6 +31,8 @@ contract Lottery is Ownable {
     address internal stableAddress_;
 
     IUniswapV2Router02 internal uniswapRouter_;
+
+    ILotteryFactory internal lotteryFactory_;
 
     // Address for uniswap v2 factory
     address factory_;
@@ -72,6 +75,7 @@ contract Lottery is Ownable {
         address _stable,
         address _factory,
         address _router,
+        address _lotteryFactory,
         uint256 _maxRewardMultiplier,
         uint16 _totalLotteryNumber,
         uint256 _maxMultiplierSlippageTolerancePercentage,
@@ -84,6 +88,7 @@ contract Lottery is Ownable {
         stableAddress_ = _stable;
         factory_ = _factory;
         uniswapRouter_ = IUniswapV2Router02(_router);
+        lotteryFactory_ = ILotteryFactory(_lotteryFactory);
         maxRewardMultiplier_ = _maxRewardMultiplier;
         maxMultiplierSlippageTolerancePercentage_ = _maxMultiplierSlippageTolerancePercentage;
         totalLotteryNumber_ = _totalLotteryNumber;
