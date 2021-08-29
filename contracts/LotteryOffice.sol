@@ -1,21 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./Lottery.sol";
 import "./interface/ILotteryOffice.sol";
 
-contract LotteryOffice is Ownable, ILotteryOffice {
-    // Libraries
+contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
+     // Libraries
     // Safe math
-    using SafeMath for uint256;
+    using SafeMathUpgradeable for uint256;
 
     // Safe ERC20
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    IERC20 internal stable_;
+    IERC20Upgradeable internal stable_;
     address internal stableAddress_;
 
     struct Set {
@@ -41,8 +42,11 @@ contract LotteryOffice is Ownable, ILotteryOffice {
 
     uint256 internal constant WEI = 1 * (10**18);
 
-    constructor(address _stable) {
-        stable_ = IERC20(_stable);
+    constructor() { }
+
+    function initialize(address _stable) public initializer {
+         __Ownable_init();
+        stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
         createdSince_ = block.timestamp;
     }
@@ -70,21 +74,7 @@ contract LotteryOffice is Ownable, ILotteryOffice {
 
         require(bytes(_lotteryName).length > 0, "Invalid lottery name");
 
-        bytes memory bytecode = abi.encodePacked(
-            type(Lottery).creationCode,
-            abi.encode(
-                _lotto,
-                _stable,
-                _factory,
-                _router,
-                address(this),
-                _maxRewardMultiplier,
-                _totalLotteryNumber,
-                _maxMultiplierSlippageTolerancePercentage,
-                _totalWinningNumber,
-                _feePercentage
-            )
-        );
+        bytes memory bytecode = type(Lottery).creationCode;
         bytes32 salt = keccak256(
             abi.encodePacked(
                 _lotteryName,
@@ -96,7 +86,18 @@ contract LotteryOffice is Ownable, ILotteryOffice {
         assembly {
             lottery := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
-
+        Lottery(lottery).initialize(
+            _lotto,
+            _stable,
+            _factory,
+            _router,
+            address(this),
+            _maxRewardMultiplier,
+            _totalLotteryNumber,
+            _maxMultiplierSlippageTolerancePercentage,
+            _totalWinningNumber,
+            _feePercentage
+        );
         Lottery(lottery).transferOwnership(msg.sender);
 
         // Update state

@@ -49,7 +49,8 @@ contract("Lottery", (accounts) => {
   })
 
   beforeEach(async () => {
-    lotteryOffice = await LotteryOffice.new(tusdt.address);
+    lotteryOffice = await LotteryOffice.new();
+    await lotteryOffice.initialize(tusdt.address);
     await lotteryOffice.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
     newLottery = await lotteryOffice.getLotteryAddress("2DigitsThai");
     lottery = await Lottery.at(newLottery);

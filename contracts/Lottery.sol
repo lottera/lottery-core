@@ -1,33 +1,34 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "./LotteryUtils.sol";
 import "./interface/ILotteryOffice.sol";
 
-contract Lottery is Ownable {
+contract Lottery is OwnableUpgradeable {
     // Libraries
     // Safe math
-    using SafeMath for uint256;
+    using SafeMathUpgradeable for uint256;
 
     // Safe ERC20
-    using SafeERC20 for IERC20;
+    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // Address functionality
-    using Address for address;
+    using AddressUpgradeable for address;
 
     // Counter for lottery IDs
     uint256 private lotteryIdCounter_;
 
-    IERC20 internal lotto_;
+    IERC20Upgradeable internal lotto_;
     address internal lottoAddress_;
 
-    IERC20 internal stable_;
+    IERC20Upgradeable internal stable_;
     address internal stableAddress_;
 
     IUniswapV2Router02 internal uniswapRouter_;
@@ -64,7 +65,9 @@ contract Lottery is Ownable {
     //-------------------------------------------------------------------------
     // CONSTRUCTOR
     //-------------------------------------------------------------------------
-    constructor(
+    constructor() { }
+
+    function initialize(
         address _lotto,
         address _stable,
         address _factory,
@@ -75,10 +78,11 @@ contract Lottery is Ownable {
         uint256 _maxMultiplierSlippageTolerancePercentage,
         uint8 _totalWinningNumber,
         uint256 _feePercentage
-    ) {
-        lotto_ = IERC20(_lotto);
+    )  public initializer {
+        __Ownable_init();
+        lotto_ = IERC20Upgradeable(_lotto);
         lottoAddress_ = _lotto;
-        stable_ = IERC20(_stable);
+        stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
         factory_ = _factory;
         uniswapRouter_ = IUniswapV2Router02(_router);
