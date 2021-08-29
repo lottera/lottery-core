@@ -653,15 +653,21 @@ contract("Lottery", (accounts) => {
       // 6. validate banker staked amount
       await validateStakedAmount(100176.4, accounts[0]);
 
-      // 7. gambler claim reqard
+      // 7. banker unstake some amount
+      await unstakeBankerAmount('100000', accounts[0]);
+
+      // 8. validate banker staked amount again
+      await validateStakedAmount(176.4, accounts[0]);
+
+      // 9. gambler claim reqard
       await lottery.claimReward({ from: accounts[1] });
       await lottery.claimReward({ from: accounts[2] });
 
-      // 8. assert for claimable reward now should be 0
+      // 10. assert for claimable reward now should be 0
       await validateClaimableReward(0, accounts[1]);
       await validateClaimableReward(0, accounts[2]);
 
-      // 9. assert gambler lotto balance
+      // 11. assert gambler lotto balance
       // This include reward from last e2e test cases
       await validateTUSDTBalance(account1TUSDT - 10 + 800, accounts[1]);
       await validateTUSDTBalance(account2TUSDT - 10 + 790, accounts[2]);
@@ -784,6 +790,11 @@ contract("Lottery", (accounts) => {
     let reward = await lottery.getBankerStableStakedAmount(account, { from: account });
     reward = web3.utils.fromWei(reward);
     assert.equal(reward, amount, `Incorrect reward amount: ${reward}`);
+  }
+
+  const unstakeBankerAmount = async (amount, account) => {
+    let weiAmount = web3.utils.toWei(amount);
+    await lottery.unstakeStable(weiAmount, { from: account });
   }
 
 })

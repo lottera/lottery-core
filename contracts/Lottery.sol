@@ -282,7 +282,7 @@ contract Lottery is Ownable {
         // Adjust staked amount for banker to state
         // find actual staked amount to unstake
         uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
-        
+
         stableBanker_[msg.sender] -= actualStakedShare;
         totalStakedStableAmount_ -= actualStakedShare;
         currentStakedStableAmount_ -= _amount;
@@ -420,8 +420,11 @@ contract Lottery is Ownable {
         uint256 totalReward = _calculateRewards(winningNumbers);
         _calculateBankerProfitLoss(totalReward);
         // Set lottery Status to RewardCompleted
-        allLotteries_[lotteryIdCounter_].lotteryStatus ==
-            LotteryUtils.Status.RewardCompleted;
+        allLotteries_[lotteryIdCounter_].lotteryStatus = LotteryUtils
+            .Status
+            .RewardCompleted;
+        // Unlock staked amount that was locked for reward
+        _unlockCurrentRoundStakedAmount();
     }
 
     //-------------------------------------------------------------------------
@@ -561,6 +564,10 @@ contract Lottery is Ownable {
             // remove stable from bankers
             currentStakedStableAmount_ -= stableNeeded;
         }
+    }
+
+    function _unlockCurrentRoundStakedAmount() internal {
+        allLotteries_[lotteryIdCounter_].lockedStableAmount = 0;
     }
 
     function _getBankerCurrentStableAmount(address _banker)
