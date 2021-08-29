@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./Lottery.sol";
-import "./interface/ILotteryFactory.sol";
+import "./interface/ILotteryOffice.sol";
 
-contract LotteryFactory is Ownable, ILotteryFactory {
+contract LotteryOffice is Ownable, ILotteryOffice {
     struct Set {
         string[] values;
         mapping(string => bool) isExists;

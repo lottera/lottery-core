@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface ILotteryFactory {
+interface ILotteryOffice {
     event LotteryCreated(
         string lotteryName,
         uint256 maxRewardMultiplier,

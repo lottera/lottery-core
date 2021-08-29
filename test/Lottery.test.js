@@ -2,7 +2,7 @@ const truffleAssert = require('truffle-assertions');
 
 const Lotto = artifacts.require("Lotto");
 const Lottery = artifacts.require("Lottery");
-const LotteryFactory = artifacts.require("LotteryFactory");
+const LotteryOffice = artifacts.require("LotteryOffice");
 const LotteryUtils = artifacts.require("LotteryUtils");
 const truffleContract = require('@truffle/contract');
 const TUSDT = artifacts.require("TestUSDT");
@@ -45,13 +45,13 @@ contract("Lottery", (accounts) => {
     }
 
     lotteryUtils = await LotteryUtils.new();
-    LotteryFactory.link('LotteryUtils', lotteryUtils.address);
+    LotteryOffice.link('LotteryUtils', lotteryUtils.address);
   })
 
   beforeEach(async () => {
-    lotteryFactory = await LotteryFactory.new();
-    await lotteryFactory.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
-    newLottery = await lotteryFactory.getLotteryAddress("2DigitsThai");
+    lotteryOffice = await LotteryOffice.new();
+    await lotteryOffice.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
+    newLottery = await lotteryOffice.getLotteryAddress("2DigitsThai");
     lottery = await Lottery.at(newLottery);
   })
 
