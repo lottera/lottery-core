@@ -3,14 +3,14 @@ const truffleAssert = require('truffle-assertions');
 const Lotto = artifacts.require("Lotto");
 const Lottery = artifacts.require("Lottery");
 const LotteryOffice = artifacts.require("LotteryOffice");
-const LotteryUtils = artifacts.require("LotteryUtils");
+const LotteryOfficeV2Test = artifacts.require("LotteryOfficeV2Test");
 const truffleContract = require('@truffle/contract');
 const TUSDT = artifacts.require("TestUSDT");
 const UniswapV2FactoryBytecode = require('./bytecode/UniswapV2Factory.json');
 const UniswapV2Factory = truffleContract(UniswapV2FactoryBytecode);
 const UniswapV2Router02Bytecode = require('./bytecode/UniswapV2Router02.json');
 const UniswapV2Router02 = truffleContract(UniswapV2Router02Bytecode);
-
+const { deployProxy, upgradeProxy } = require('@openzeppelin/truffle-upgrades');
 
 
 contract("Lottery", (accounts) => {
@@ -43,17 +43,53 @@ contract("Lottery", (accounts) => {
       await tusdt.transfer(accounts[i], transferAmount, { from: accounts[0] });
       await lotto.transfer(accounts[i], transferAmount, { from: accounts[0] });
     }
-
-    lotteryUtils = await LotteryUtils.new();
-    LotteryOffice.link('LotteryUtils', lotteryUtils.address);
   })
 
   beforeEach(async () => {
-    lotteryOffice = await LotteryOffice.new();
-    await lotteryOffice.initialize(tusdt.address);
+    lotteryOffice = await deployProxy(LotteryOffice, [tusdt.address]);
     await lotteryOffice.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
     newLottery = await lotteryOffice.getLotteryAddress("2DigitsThai");
     lottery = await Lottery.at(newLottery);
+  })
+
+  describe("upgradable", async () => {
+    it("banker can stake stable coin to contract and still can unstake after upgrade to v2", async () => {
+      let amount = web3.utils.toWei('1000');
+
+      await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      await lotteryOffice.stake(amount, { from: accounts[0] });
+
+      let actual = await lotteryOffice.getStakedAmount(accounts[0], { from: accounts[0] });
+      actual = web3.utils.fromWei(actual);
+
+      let balanceOfContract = await tusdt.balanceOf(lotteryOffice.address)
+      balanceOfContract = web3.utils.fromWei(balanceOfContract)
+
+      assert.equal(actual, '1000', "Staked balance should be 1000");
+      assert.equal(balanceOfContract, '1000', "Contract's stable balance should be 1000");
+
+      // Upgrade contract
+      await upgradeProxy(lotteryOffice.address, LotteryOfficeV2Test);
+
+      let balanceAfterUpgrade = await lotteryOffice.getStakedAmount(accounts[0], { from: accounts[0] });
+      balanceAfterUpgrade = web3.utils.fromWei(balanceAfterUpgrade)
+      assert.equal(balanceAfterUpgrade, '1000', "Staked balance should be 1000");
+
+      let unstakeResult = await lotteryOffice.unstake(amount, { from: accounts[0] });
+
+      // V2 Should emit event with custom amount 9999
+      truffleAssert.eventEmitted(unstakeResult, 'UnstakeStableCoin', (ev) => {
+        return ev.amountWithReward == 9999;
+      }, 'Contract should return the correct amount.');
+
+      // Test V2 have some bug so it should error
+      await truffleAssert.reverts(
+        lotteryOffice.getStakedAmount(accounts[0], { from: accounts[0] }),
+        "VM Exception while processing transaction: revert"
+      );
+    })
+
   })
 
   describe("banker", async () => {

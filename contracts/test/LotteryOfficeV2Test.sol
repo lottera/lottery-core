@@ -5,10 +5,10 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./Lottery.sol";
-import "./interface/ILotteryOffice.sol";
+import "../Lottery.sol";
+import "../interface/ILotteryOffice.sol";
 
-contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
+contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
     // Libraries
     // Safe math
     using SafeMathUpgradeable for uint256;
@@ -213,7 +213,7 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
         emit UnstakeStableCoin(
             msg.sender,
             actualStakedShare,
-            _amount,
+            9999, // this for testing
             getBankerShare[msg.sender]
         );
     }
@@ -281,13 +281,9 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
         view
         returns (uint256 currentAmount)
     {
-        if (totalStakedShare_ > 0) {
-            currentAmount = getBankerShare[_banker]
-                .mul(currentStakedAmount_)
-                .div(totalStakedShare_);
-        } else {
-            currentAmount = 0;
-        }
+        currentAmount = getBankerShare[_banker].mul(currentStakedAmount_).div(
+            totalStakedShare_
+        );
     }
 
     function _getActualStakedShareForAmount(uint256 _amount)
