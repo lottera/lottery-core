@@ -3,7 +3,7 @@ const Lottery = artifacts.require("Lottery");
 
 module.exports = function (deployer) {
   deployer.deploy(LotteryOffice)
-    // .then(function () {
-    //   return deployer.deploy(Lottery);
-    // });
+    .then(function () {
+      return deployer.deploy(Lottery);
+    });
 };

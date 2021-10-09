@@ -46,7 +46,7 @@ contract("Lottery", (accounts) => {
   })
 
   beforeEach(async () => {
-    lotteryOffice = await deployProxy(LotteryOffice, [tusdt.address]);
+    lotteryOffice = await deployProxy(LotteryOffice, [tusdt.address, lotto.address, 3]);
     await lotteryOffice.createNewLottery("2DigitsThai", lotto.address, tusdt.address, factory.address, router02.address, 80, 100, 20, 1, 2);
     newLottery = await lotteryOffice.getLotteryAddress("2DigitsThai");
     lottery = await Lottery.at(newLottery);
@@ -55,19 +55,31 @@ contract("Lottery", (accounts) => {
   describe("upgradable", async () => {
     it("banker can stake stable coin to contract and still can unstake after upgrade to v2", async () => {
       let amount = web3.utils.toWei('1000');
-
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let actual = await lotteryOffice.getStakedAmount(accounts[0], { from: accounts[0] });
       actual = web3.utils.fromWei(actual);
 
+      let lottoActual = await lotteryOffice.getCurrentLockedLottoAmount(accounts[0], { from: accounts[0] });
+      lottoActual = web3.utils.fromWei(lottoActual);
+
       let balanceOfContract = await tusdt.balanceOf(lotteryOffice.address)
       balanceOfContract = web3.utils.fromWei(balanceOfContract)
 
       assert.equal(actual, '1000', "Staked balance should be 1000");
       assert.equal(balanceOfContract, '1000', "Contract's stable balance should be 1000");
+
+      // Check locked lotto
+      let balanceOfContractLotto = await lotto.balanceOf(lotteryOffice.address)
+      balanceOfContractLotto = web3.utils.fromWei(balanceOfContractLotto)
+
+      assert.equal(lottoActual, '30', "Staked balance should be 30");
+      assert.equal(balanceOfContractLotto, '30', "Contract's stable balance should be 30");
 
       // Upgrade contract
       await upgradeProxy(lotteryOffice.address, LotteryOfficeV2Test);
@@ -95,8 +107,10 @@ contract("Lottery", (accounts) => {
   describe("banker", async () => {
     it("banker can stake stable coin to contract", async () => {
       let amount = web3.utils.toWei('1000');
-
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
@@ -112,12 +126,15 @@ contract("Lottery", (accounts) => {
 
     it("banker can stake addition stable coin to contract", async () => {
       let amount = web3.utils.toWei('1000');
-
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
@@ -146,6 +163,9 @@ contract("Lottery", (accounts) => {
       let amount = web3.utils.toWei('100000');
       let unstakeAmount = web3.utils.toWei('95000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
@@ -180,6 +200,9 @@ contract("Lottery", (accounts) => {
       let unstakeAmount = web3.utils.toWei('90000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
 
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let actual = await lotteryOffice.getStakedAmount(accounts[0], { from: accounts[0] });
@@ -190,6 +213,15 @@ contract("Lottery", (accounts) => {
 
       assert.equal(actual, '100000', "Staked balance should be 100000");
       assert.equal(balanceOfContract, '100000', "Contract's stable balance should be 100000");
+
+      let actualLotto = await lotteryOffice.getCurrentLockedLottoAmount(accounts[0], { from: accounts[0] });
+      actualLotto = web3.utils.fromWei(actualLotto);
+
+      let balanceOfContractLotto = await lotto.balanceOf(lotteryOffice.address)
+      balanceOfContractLotto = web3.utils.fromWei(balanceOfContractLotto)
+
+      assert.equal(actualLotto, '3000', "Staked balance should be 3000");
+      assert.equal(balanceOfContractLotto, '3000', "Contract's stable balance should be 3000");
 
       let weiAmount = web3.utils.toWei('1');
       let lotteries = [{
@@ -210,6 +242,15 @@ contract("Lottery", (accounts) => {
 
       assert.equal(actual, '10000', "Remaining balance should be 10000");
       assert.equal(balanceOfContract, '10000', "Contract's remaining stable balance should be 10000");
+
+      actualLotto = await lotteryOffice.getCurrentLockedLottoAmount(accounts[0], { from: accounts[0] });
+      actualLotto = web3.utils.fromWei(actualLotto);
+
+      balanceOfContractLotto = await lotto.balanceOf(lotteryOffice.address)
+      balanceOfContractLotto = web3.utils.fromWei(balanceOfContractLotto)
+
+      assert.equal(actualLotto, '300', "Remaining balance should be 300");
+      assert.equal(balanceOfContractLotto, '300', "Contract's remaining stable balance should be 300");
     })
 
     it("banker can unstake stable coin from contract", async () => {
@@ -217,6 +258,9 @@ contract("Lottery", (accounts) => {
       let amount = web3.utils.toWei('1000');
       let unstakeAmount = web3.utils.toWei('500');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
@@ -248,6 +292,9 @@ contract("Lottery", (accounts) => {
       let amount = web3.utils.toWei('1000');
       let unstakeAmount = web3.utils.toWei('5000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
 
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
@@ -332,6 +379,9 @@ contract("Lottery", (accounts) => {
       let withdrawAmount = web3.utils.toWei('5000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
 
+      let lottoLockedAmount = web3.utils.toWei('300');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let balanceOfContract = await tusdt.balanceOf(lotteryOffice.address)
@@ -374,6 +424,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let stakeAmount = web3.utils.toWei('1000');
       await tusdt.increaseAllowance(lotteryOffice.address, stakeAmount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(stakeAmount, { from: accounts[0] });
 
       let amount = 8000;
@@ -403,6 +457,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let stakeAmount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, stakeAmount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(stakeAmount, { from: accounts[0] });
 
       let amount = 80;
@@ -444,6 +502,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let stakeAmount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, stakeAmount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(stakeAmount, { from: accounts[0] });
 
       let amount = 80;
@@ -494,6 +556,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('1000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('30');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let rewardMultiplier = await lottery.getRewardMultiplier(1, { from: accounts[0] });
@@ -504,6 +570,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let weiAmount = web3.utils.toWei('100');
@@ -523,6 +593,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let weiAmount = web3.utils.toWei('100');
@@ -537,6 +611,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let rewardMultiplier = await lottery.getRewardMultiplier(1, { from: accounts[0] });
@@ -547,6 +625,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let maxAllowBetAmount = await lottery.getMaxAllowBetAmount(1, { from: accounts[0] });
@@ -564,6 +646,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let weiAmount = web3.utils.toWei('10');
@@ -584,6 +670,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
 
@@ -616,6 +706,10 @@ contract("Lottery", (accounts) => {
       // Stake stable before can get reward multiplier
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       let weiAmount = web3.utils.toWei('10');
@@ -642,6 +736,10 @@ contract("Lottery", (accounts) => {
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       // 2. gambler buy lottery
@@ -684,9 +782,14 @@ contract("Lottery", (accounts) => {
       const account1TUSDT = await getCurrentTUSDTBalance(accounts[1]);
       const account2TUSDT = await getCurrentTUSDTBalance(accounts[2]);
       const account0Lotto = await getCurrentLottoBalance(accounts[0]);
+      
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       // 2. gambler buy lottery
@@ -739,7 +842,8 @@ contract("Lottery", (accounts) => {
       await validateTUSDTBalance(account2TUSDT - 10 + 790, accounts[2]);
 
       // 12. Validate fee amount received
-      await validateLottoBalance(Number(account0Lotto) + 358.791222654364895351, accounts[0]);
+      // 5.282681355733531025 is lotto that still locked in contract
+      await validateLottoBalance(Number(account0Lotto) + 358.791222654364895351 - 5.282681355733531025 , accounts[0]);
     })
 
     it("reward should be calculated correctly for each gambler - big gambler win", async () => {
@@ -749,6 +853,10 @@ contract("Lottery", (accounts) => {
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       // 2. gambler buy lottery
@@ -794,6 +902,10 @@ contract("Lottery", (accounts) => {
       // 1. banker stake stable amount
       let amount = web3.utils.toWei('100000');
       await tusdt.increaseAllowance(lotteryOffice.address, amount, { from: accounts[0] });
+
+      let lottoLockedAmount = web3.utils.toWei('3000');
+      await lotto.increaseAllowance(lotteryOffice.address, lottoLockedAmount, { from: accounts[0] });
+
       await lotteryOffice.stake(amount, { from: accounts[0] });
 
       // 2. gambler buy lottery
