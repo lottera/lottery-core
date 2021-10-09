@@ -19,6 +19,9 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
     IERC20Upgradeable internal stable_;
     address internal stableAddress_;
 
+    IERC20Upgradeable internal lotto_;
+    address internal lottoAddress_;
+
     struct Set {
         string[] values;
         mapping(string => bool) isExists;
@@ -26,6 +29,7 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
     mapping(string => address) public getLotteryAddress;
     mapping(address => string) public getLotteryName;
     mapping(address => bool) public isValidLottery;
+    mapping(address => uint256) public getCurrentLockedLottoAmount;
 
     Set internal lotteryNames;
 
@@ -39,15 +43,22 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
     uint256 public currentLockedAmount_;
     // Created since
     uint256 internal createdSince_;
-
+    // % of lotto required to be locked when banker want to stake stable
+    uint256 internal requiredLottoPercentage_;
     uint256 internal constant WEI = 1 * (10**18);
 
     constructor() {}
 
-    function initialize(address _stable) public initializer {
+    function initialize(address _stable, address _lotto, uint256 _requiredLottoPercentage) public initializer {
         __Ownable_init();
         stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
+
+        lotto_ = IERC20Upgradeable(_lotto);
+        lottoAddress_ = _lotto;
+
+        requiredLottoPercentage_ = _requiredLottoPercentage;
+
         createdSince_ = block.timestamp;
     }
 
@@ -178,8 +189,15 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
         );
         totalStakedShare_ = totalStakedShare_.add(actualStakedShare);
         currentStakedAmount_ = currentStakedAmount_.add(_amount);
+        // Lock lotto 
+        uint256 requiredLottoAmount = _amount.mul(requiredLottoPercentage_).div(100);
+        require(lotto_.balanceOf(msg.sender) >= requiredLottoAmount, "Lotto amount is not enough");
+        // Transfer lotto to contract
+        lotto_.safeTransferFrom(msg.sender, address(this), requiredLottoAmount);
+        getCurrentLockedLottoAmount[msg.sender] = getCurrentLockedLottoAmount[msg.sender].add(requiredLottoAmount);
+
         // Emit StakeStableCoin event
-        emit StakeStableCoin(msg.sender, _amount, getBankerShare[msg.sender]);
+        emit StakeStableCoin(msg.sender, _amount, getBankerShare[msg.sender], requiredLottoAmount);
     }
 
     function unstake(uint256 _amount) external override {
@@ -200,6 +218,16 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
 
         // Transfer stable to banker
         stable_.safeTransfer(msg.sender, _amount);
+
+        // Unlock lotto and transfer back to banker
+        uint256 currentLockedLottoAmount = getCurrentLockedLottoAmount[msg.sender];
+        uint256 unlockedLottoAmount = _amount.mul(currentLockedLottoAmount).div(_getBankerCurrentStableAmount(msg.sender));
+        // Transfer lotto to banker
+        lotto_.safeTransfer(msg.sender, unlockedLottoAmount);
+        
+        // Adjust state
+        getCurrentLockedLottoAmount[msg.sender] = getCurrentLockedLottoAmount[msg.sender].sub(unlockedLottoAmount);
+
         // Adjust staked amount for banker to state
         // find actual staked amount to unstake
         uint256 actualStakedShare = _getActualStakedShareForAmount(_amount);
@@ -209,12 +237,14 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
         );
         totalStakedShare_ = totalStakedShare_.sub(actualStakedShare);
         currentStakedAmount_ = currentStakedAmount_.sub(_amount);
+
         // Emit UnstakeStableCoin event
         emit UnstakeStableCoin(
             msg.sender,
             actualStakedShare,
             _amount,
-            getBankerShare[msg.sender]
+            getBankerShare[msg.sender],
+            unlockedLottoAmount
         );
     }
 

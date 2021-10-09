@@ -12,14 +12,16 @@ interface ILotteryOffice {
     event StakeStableCoin(
         address indexed banker,
         uint256 amount,
-        uint256 total
+        uint256 total,
+        uint256 lockedLottoAmount
     );
 
     event UnstakeStableCoin(
         address indexed banker,
         uint256 actualStakedAmount,
         uint256 amountWithReward,
-        uint256 remaining
+        uint256 remaining,
+        uint256 unlockedLottoAmount
     );
 
     event DepositStableCoin(

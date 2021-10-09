@@ -19,6 +19,9 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
     IERC20Upgradeable internal stable_;
     address internal stableAddress_;
 
+    IERC20Upgradeable internal lotto_;
+    address internal lottoAddress_;
+
     struct Set {
         string[] values;
         mapping(string => bool) isExists;
@@ -26,6 +29,7 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
     mapping(string => address) public getLotteryAddress;
     mapping(address => string) public getLotteryName;
     mapping(address => bool) public isValidLottery;
+    mapping(address => uint256) public getCurrentLockedLottoAmount;
 
     Set internal lotteryNames;
 
@@ -40,15 +44,20 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
     // Created since
     uint256 internal createdSince_;
 
+    uint256 internal requiredLottoPercentage_;
     uint256 internal constant WEI = 1 * (10**18);
 
     constructor() {}
 
-    function initialize(address _stable) public initializer {
+    function initialize(address _stable, address _lotto, uint256 _requiredLottoPercentage) public initializer {
         __Ownable_init();
         stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
+
+        lotto_ = IERC20Upgradeable(_lotto);
+        lottoAddress_ = _lotto;
         createdSince_ = block.timestamp;
+        requiredLottoPercentage_ = _requiredLottoPercentage;
     }
 
     //-------------------------------------------------------------------------
@@ -179,7 +188,7 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
         totalStakedShare_ = totalStakedShare_.add(actualStakedShare);
         currentStakedAmount_ = currentStakedAmount_.add(_amount);
         // Emit StakeStableCoin event
-        emit StakeStableCoin(msg.sender, _amount, getBankerShare[msg.sender]);
+        emit StakeStableCoin(msg.sender, _amount, getBankerShare[msg.sender], 0);
     }
 
     function unstake(uint256 _amount) external override {
@@ -214,7 +223,8 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
             msg.sender,
             actualStakedShare,
             9999, // this for testing
-            getBankerShare[msg.sender]
+            getBankerShare[msg.sender],
+            0
         );
     }
 
