@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../Lottery.sol";
 import "../interface/ILotteryOffice.sol";
+import "../LotteryUtils.sol";
 
 contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
     // Libraries
@@ -21,6 +22,8 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
 
     IERC20Upgradeable internal lotto_;
     address internal lottoAddress_;
+
+    address internal factory_;
 
     struct Set {
         string[] values;
@@ -49,13 +52,16 @@ contract LotteryOfficeV2Test is OwnableUpgradeable, ILotteryOffice {
 
     constructor() {}
 
-    function initialize(address _stable, address _lotto, uint256 _requiredLottoPercentage) public initializer {
+    function initialize(address _stable, address _lotto, address _factory, uint256 _requiredLottoPercentage) public initializer {
         __Ownable_init();
         stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
 
         lotto_ = IERC20Upgradeable(_lotto);
         lottoAddress_ = _lotto;
+
+        factory_ = _factory;
+
         createdSince_ = block.timestamp;
         requiredLottoPercentage_ = _requiredLottoPercentage;
     }

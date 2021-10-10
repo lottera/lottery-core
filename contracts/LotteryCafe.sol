@@ -23,8 +23,9 @@ contract LotteryCafe is OwnableUpgradeable {
     // Info of each user.
     struct UserInfo {
         uint256 shareAmount;    
-        uint256 rewardDebt; 
+        uint256 pendingRewards; 
         uint256 lastActivityBlock;
+        uint256 totalRewards;
     }
 
     // Mapping of staked amount
@@ -33,7 +34,8 @@ contract LotteryCafe is OwnableUpgradeable {
     uint256 public totalStakedShare;
     // Lotto rewards per block
     uint256 public lottoRewardsPerBlock;
-
+    // Constant Q value for calculation
+    uint256 internal constant Q = 1e12;
     constructor() {}
 
     function initialize(address _stableLottoLp, address _lotto, uint256 _lottoRewardsPerBlock) public initializer {
@@ -44,6 +46,19 @@ contract LotteryCafe is OwnableUpgradeable {
         lotto_ = IERC20Upgradeable(_lotto);
         lottoAddress_ = _lotto;
 
-        lottoRewardsPerBlock = _lottoRewardsPerBlock;
+        lottoRewardsPerBlock = _lottoRewardsPerBlock.mul(Q); // 0.2 per block ~ 200% cal at 28000 block per day // mul by 1e12
+    }
+
+
+    //-------------------------------------------------------------------------
+    // View
+    //-------------------------------------------------------------------------
+    function getRewards(address _user)
+        external
+        view
+        returns (uint256 rewards)
+    {
+        UserInfo storage user = getUserInfo[_user];
+        rewards = 0;
     }
 }

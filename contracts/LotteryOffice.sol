@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./Lottery.sol";
 import "./interface/ILotteryOffice.sol";
+import "./LotteryUtils.sol";
 
 contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
     // Libraries
@@ -21,6 +22,8 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
 
     IERC20Upgradeable internal lotto_;
     address internal lottoAddress_;
+
+    address internal factory_;
 
     struct Set {
         string[] values;
@@ -49,13 +52,15 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
 
     constructor() {}
 
-    function initialize(address _stable, address _lotto, uint256 _requiredLottoPercentage) public initializer {
+    function initialize(address _stable, address _lotto, address _factory, uint256 _requiredLottoPercentage) public initializer {
         __Ownable_init();
         stable_ = IERC20Upgradeable(_stable);
         stableAddress_ = _stable;
 
         lotto_ = IERC20Upgradeable(_lotto);
         lottoAddress_ = _lotto;
+
+        factory_ = _factory;
 
         requiredLottoPercentage_ = _requiredLottoPercentage;
 
@@ -190,7 +195,8 @@ contract LotteryOffice is OwnableUpgradeable, ILotteryOffice {
         totalStakedShare_ = totalStakedShare_.add(actualStakedShare);
         currentStakedAmount_ = currentStakedAmount_.add(_amount);
         // Lock lotto 
-        uint256 requiredLottoAmount = _amount.mul(requiredLottoPercentage_).div(100);
+        uint256 requiredAmountInStable = _amount.mul(requiredLottoPercentage_).div(100);
+        uint256 requiredLottoAmount = LotteryUtils.getLottoOutputWithDirectPrice(requiredAmountInStable, factory_, stableAddress_, lottoAddress_);
         require(lotto_.balanceOf(msg.sender) >= requiredLottoAmount, "Lotto amount is not enough");
         // Transfer lotto to contract
         lotto_.safeTransferFrom(msg.sender, address(this), requiredLottoAmount);
