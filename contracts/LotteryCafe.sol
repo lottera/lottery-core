@@ -157,7 +157,7 @@ contract LotteryCafe is OwnableUpgradeable {
 
     function unstake(uint256 _amount) external {
         UserInfo storage user = getUserInfo[msg.sender];
-        require(_amount >= user.shareAmount && _amount > 0, "Invalid amount");
+        require(_amount <= user.shareAmount && _amount > 0, "Invalid amount");
 
         updateState();
         uint256 pending = user

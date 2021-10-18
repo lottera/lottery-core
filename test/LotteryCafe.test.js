@@ -59,7 +59,7 @@ contract("LotteryCafe", (accounts) => {
 
 
   describe("lottery cafe farming", async () => {
-    it("user can stake some lp to farm and get rewards", async () => {
+    it("user can stake some lp to farm and get rewards and then unstake some lp", async () => {
 
       let lpAmount = web3.utils.toWei('5000');
       let initialLottoBalance = await getCurrentLottoBalance(accounts[0]);
@@ -133,6 +133,19 @@ contract("LotteryCafe", (accounts) => {
       rewards = await lotteryCafe.getRewards(accounts[0]);
       rewards = web3.utils.fromWei(rewards);
       assert.equal(rewards, 0);
+
+      /////////////////////////////////////////////////////////////
+      await lotteryCafe.unstake(lpAmount);
+
+      userInfo = await lotteryCafe.getUserInfo(accounts[0]);
+      shareAmount = web3.utils.fromWei(userInfo.shareAmount);
+      assert.equal(shareAmount, 15000);
+
+      await lotteryCafe.unstake(userInfo.shareAmount);
+
+      userInfo = await lotteryCafe.getUserInfo(accounts[0]);
+      shareAmount = web3.utils.fromWei(userInfo.shareAmount);
+      assert.equal(shareAmount, 0);
 
     })
 
