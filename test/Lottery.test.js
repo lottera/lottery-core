@@ -339,7 +339,7 @@ contract("Lottery", (accounts) => {
       await lottery.adjustTotalWinningNumber(7, { from: accounts[0] });
       await lottery.closeLottery({ from: accounts[0] });
       await truffleAssert.reverts(
-        lottery.setWinningNumbers(numbers, { from: accounts[0] }),
+        lottery.setWinningNumbers(numbers, { from: accounts[0], gas:3000000 }),
         "Total winning numbers is not corrected"
       );
       let results = await lottery.getWinningNumbers({ from: accounts[0] });
@@ -352,7 +352,7 @@ contract("Lottery", (accounts) => {
       await lottery.adjustTotalWinningNumber(4, { from: accounts[0] });
       await lottery.closeLottery({ from: accounts[0] });
       await truffleAssert.reverts(
-        lottery.setWinningNumbers(numbers, { from: accounts[0] }),
+        lottery.setWinningNumbers(numbers, { from: accounts[0], gas:3000000 }),
         "Invalid winning number"
       );
     })

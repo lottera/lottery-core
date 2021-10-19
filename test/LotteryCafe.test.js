@@ -51,9 +51,9 @@ contract("LotteryCafe", (accounts) => {
     totalLpPair = await lpPair.balanceOf(accounts[0]);
     await lpPair.approve(lotteryCafe.address, totalLpPair);
 
-    // then transfer ownership of lotto to cafe
+    // then set minter of lotto to cafe
     // this will allow cafe to mint new token for reward
-    await lotto.transferOwnership(lotteryCafe.address);
+    await lotto.setMinterAddress(lotteryCafe.address);
   })
 
 
